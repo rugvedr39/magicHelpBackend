@@ -14,8 +14,39 @@ const generateToken = (id) => {
 };
 
 // Register a new user
+
+
+const findAvailableSponsor = async (referralCode) => {
+  const sponsor = await User.findOne({ username: referralCode });
+  if (!sponsor) return null;
+  return findNextAvailableSponsor(sponsor._id);
+};
+
+// Function to check if the current user can accept new referrals
+const canAcceptNewReferrals = async (userId) => {
+  const count = await User.countDocuments({ sponsorId: Object(userId) });
+  return count < 3; // Assuming each user can have up to 3 direct referrals
+};
+
+// Breadth-first search to find the next available sponsor
+const findNextAvailableSponsor = async (userId) => {
+  const queue = [userId];
+  while (queue.length > 0) {
+    const currentUserId = queue.shift();
+    if (await canAcceptNewReferrals(currentUserId)) {
+      return User.findById(currentUserId);
+    }
+    const children = await User.find({ sponsorId: currentUserId }, { _id: 1 });
+    for (const child of children) {
+      queue.push(child._id);
+    }
+  }
+  return null;
+};
+
+
 exports.registerUser = async (req, res) => {
-  const { email, password, mobileNumber, bankDetails, upiNumber, sponsorUsername,ePinId } = req.body;
+  const { email, password, mobileNumber, bankDetails, upiNumber, sponsorUsername,ePinId,name } = req.body;
   const userExists = await User.findOne({ email });
 
   if (userExists) {
@@ -29,12 +60,14 @@ exports.registerUser = async (req, res) => {
 
   let sponsorId = null;
   if (sponsorUsername) {
-    const sponsor = await User.findOne({ username: sponsorUsername });
-    if (!sponsor) {
-      return res.status(400).json({ message: 'Invalid sponsor username' });
+    const sponsorUser = await findAvailableSponsor(sponsorUsername);
+    if (!sponsorUser) {
+      return res.status(400).json({ message: 'No available sponsor found for the provided referral code.' });
     }
-    sponsorId = sponsor._id;
+    sponsorId = sponsorUser._id;
   }
+
+  const sounseruserId = await User.findOne({ username:sponsorUsername });
 
   const username = await generateUsername();
 
@@ -42,6 +75,7 @@ exports.registerUser = async (req, res) => {
   const user = await User.create({
     username,
     email,
+    name,
     password,
     mobileNumber,
     bankDetails,
@@ -63,14 +97,35 @@ exports.registerUser = async (req, res) => {
           const commissionAmount = amount * currentLevel;
 
           if (sponsor) {
-            transactions.push({
-              payerId: user._id, // The new user pays commission
-              receiverId: sponsor._id, // Sponsor receives commission
-              amount: commissionAmount,
-              type: 'commission',
-              level: currentLevel
-            });
-            
+
+            if (user.sponsorId == sounseruserId._id) {
+              transactions.push({
+                payerId: user._id, // The new user pays commission
+                receiverId: sponsor._id, // Sponsor receives commission
+                amount: commissionAmount,
+                type: 'commission',
+                level: currentLevel
+              }); 
+            }else{
+              if(currentLevel==1){
+                transactions.push({
+                  payerId: user._id, // The new user pays commission
+                  receiverId: sounseruserId._id, // Sponsor receives commission
+                  amount: commissionAmount,
+                  type: 'commission',
+                  level: currentLevel
+                });
+              }else{
+                transactions.push({
+                  payerId: user._id, // The new user pays commission
+                  receiverId: sponsor._id, // Sponsor receives commission
+                  amount: commissionAmount,
+                  type: 'commission',
+                  level: currentLevel
+                });
+              }
+            }
+
             mlmStructures.push({
               userId: user._id,
               level: currentLevel,
@@ -106,6 +161,7 @@ exports.registerUser = async (req, res) => {
     res.status(200).json({
       _id: user._id,
       username: user.username,
+      name: user.name,
       email: user.email,
       token: generateToken(user._id)
     });
