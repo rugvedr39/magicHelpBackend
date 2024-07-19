@@ -117,6 +117,26 @@ exports.registerUser = async (req, res) => {
 
 
 
+exports.checkUser = async (req, res) => {
+  const { username } = req.params;
+  console.log(`Checking username: ${username}`); // Log received username
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) {
+      console.log('User not found'); // Log if user is not found
+
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.log('User found:', user); // Log user data if found
+
+    res.status(200).json({ name: user.name });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 
 // Authenticate user and get token
 exports.authUser = async (req, res) => {
@@ -146,6 +166,7 @@ exports.getUserProfile = async (req, res) => {
       username: user.username,
       email: user.email,
       mobileNumber: user.mobileNumber,
+      name: user.name,
       bankDetails: user.bankDetails,
       upiNumber: user.upiNumber,
       referralCode: user.referralCode,
