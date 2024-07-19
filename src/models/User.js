@@ -26,5 +26,16 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
+userSchema.statics.getTotalUsersCount = async function() {
+  return this.countDocuments();
+};
+
+// Static method to get count of users joined today
+userSchema.statics.getUsersJoinedTodayCount = async function() {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  return this.countDocuments({ createdAt: { $gte: startOfToday } });
+};
+
 const User = mongoose.model('User', userSchema);
 module.exports = User;

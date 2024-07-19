@@ -100,7 +100,7 @@ exports.registerUser = async (req, res) => {
   
 // Mark E-pin as used    
     epin.status = 'used';
-    epin.assignedTo = user._id;
+    epin.usedBy = user._id;
     await epin.save();
     
     res.status(200).json({

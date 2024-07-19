@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { getAllUsers, getAllTransactions, getAllEpins } = require('../controllers/adminController');
+const { getAllUsers, getAllTransactions, getAllEpins,getUserCounts,getEpins } = require('../controllers/adminController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.get('/users', protect, getAllUsers);
-router.get('/transactions', protect, getAllTransactions);
-router.get('/epins', protect, getAllEpins);
+router.get('/users', getAllUsers);
+router.get('/transactions', getAllTransactions);
+router.get('/epins', getAllEpins);
+router.get('/getUserCounts', getUserCounts);
+router.get('/getEpins', getEpins);
 
 module.exports = router;
