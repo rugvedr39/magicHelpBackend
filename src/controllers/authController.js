@@ -5,8 +5,8 @@ const generateUsername = require('../utils/generateUsername');
 const Epin = require('../models/Epin')
 const Transaction = require('../models/Transaction');
 const MlmStructure = require('../models/MlmStructure');
-
-
+const Otp = require('../models/otpModel');
+const fetch = require('node-fetch');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -157,6 +157,22 @@ exports.registerUser = async (req, res) => {
     epin.status = 'used';
     epin.usedBy = user._id;
     await epin.save();
+
+    const options = {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: 'Bearer sNZxqze0Bb2JxCuujKyd8qRzTWKmIgrESdebgvn554fd9318'
+      },
+      body: JSON.stringify({chatId: "91"+user.mobileNumber+'@c.us', 
+        message: `*Welcome to MagicHelp, ${user.name}!* 🎉\n\nThank you for registering with us. We are thrilled to have you join our community. Here is your user Name : *${user.username}*.\n\nIf you have any questions or need assistance, feel free to reach out.\n\nBest Regards,\n*MagicHelp Team*`
+      })
+    };
+    fetch('https://waapi.app/api/v1/instances/15895/client/action/send-message', options)
+      .then(response => response.json())
+      .then(response => response.json())
+      .catch(err => console.error(err));
     
     res.status(200).json({
       _id: user._id,
@@ -170,29 +186,18 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-
-
-
 exports.checkUser = async (req, res) => {
   const { username } = req.params;
-  console.log(`Checking username: ${username}`); // Log received username
-
   try {
     const user = await User.findOne({ username });
     if (!user) {
-      console.log('User not found'); // Log if user is not found
-
       return res.status(404).json({ message: 'User not found' });
     }
-    console.log('User found:', user); // Log user data if found
-
     res.status(200).json({ name: user.name });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // Authenticate user and get token
 exports.authUser = async (req, res) => {
@@ -262,3 +267,62 @@ exports.updateUserProfile = async (req, res) => {
     res.status(404).json({ message: 'User not found' });
   }
 };
+
+
+
+const generateOtp = () => {
+  return Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
+};
+
+
+exports.genrateOtp = async (req, res) => {
+  try {
+    const {phoneNumber,username} = req.params;
+    const user = await User.findOne({mobileNumber: phoneNumber,username:username})
+    if (!user) {
+      res.status(404).json({message:"Account Not Found"})
+    }
+
+    const otpValue = generateOtp();
+    const otp = await Otp.create({phoneNumber:user.mobileNumber,otp:otpValue,username:user.username})
+    const options = {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: 'Bearer sNZxqze0Bb2JxCuujKyd8qRzTWKmIgrESdebgvn554fd9318'
+      },
+      body: JSON.stringify({chatId: "91"+user.mobileNumber+'@c.us', message: 'Your MagicHelp forget Password Otp is '+ otp.otp})
+    };
+    fetch('https://waapi.app/api/v1/instances/15895/client/action/send-message', options)
+      .then(response => response.json())
+      .then(response => response.json())
+      .catch(err => console.error(err));
+
+    res.status(200).json({success:200,message: "Otp Send SuccessFully"})  
+  } catch (error) {
+    console.error('Error generating OTP:', error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+
+exports.veryfyOtpAndChangePassword = async (req, res) => {
+  const { password,otpnumber } = req.body
+  try {
+    const otp = await Otp.findOne({ otp:otpnumber })
+    if(!otp){
+      res.status(200).json({ status:400,message: "Invalid OTP" });
+    }
+    const user = await User.findOne({mobileNumber: otp.phoneNumber,username:otp.username})
+    if(!user){
+      res.status(200).json({ status:400,message: "Invalid User" });
+    }
+    user.password = password
+    await Otp.deleteOne({ otp: otpnumber });
+    res.status(200).json({ status:200,message: "Password Changed Successfully" });
+  } catch (error) {
+    console.error('Error generating OTP:', error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}

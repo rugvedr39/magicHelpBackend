@@ -4,9 +4,9 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true, index: true  },
   name:{ type: String, required: true},
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true },
   password: { type: String, required: true },
-  mobileNumber: { type: String, required: true },
+  mobileNumber: { type: String, required: true, match: [/^\d{10}$/, 'Please fill a valid phone number'], },
   bankDetails: {
     accountNumber: { type: String },
     ifscCode: { type: String }
