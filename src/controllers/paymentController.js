@@ -2,6 +2,7 @@ const { default: mongoose } = require('mongoose');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const Epin = require('../models/Epin');
+const fetch = require('node-fetch');
 
 exports.getTransactionsWithReceiverInfo = async (req, res) => {
   try {
@@ -43,7 +44,9 @@ exports.updateTransactionUtrAndDate = async (req, res) => {
   try {
     const { transactionId } = req.params;
     const { utrNumber } = req.body;
-    const transaction = await Transaction.findById(transactionId);
+    const transaction = await Transaction.findById(transactionId).
+    populate('receiverId', 'name username mobileNumber').
+    populate('payerId','name username mobileNumber');
     if (!transaction) {
       return res.status(404).json({ message: 'Transaction not found' });
     }
@@ -51,7 +54,9 @@ exports.updateTransactionUtrAndDate = async (req, res) => {
     transaction.status = "pending"
     transaction.paidDate = new Date();
     await transaction.save();
-    res.status(200).json({ message: 'Transaction updated successfully' });
+    res.status(200).json({ status:200,data:transaction,message: 'Transaction updated successfully' });
+
+
   } catch (error) {
     console.error('Error updating transaction:', error);
     res.status(500).json({ message: 'Internal server error' });
