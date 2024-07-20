@@ -50,19 +50,19 @@ exports.registerUser = async (req, res) => {
   const userExists = await User.findOne({ email });
 
   if (userExists) {
-    return res.status(400).json({ message: 'User already exists' });
+    return res.status(200).json({ status:400,message: 'User already exists' });
   }
 
   const epin = await Epin.findOne({ ePinId, status: 'unused',type:"login" });
   if (!epin) {
-    return res.status(400).json({ message: 'Invalid or already used E-pin' });
+    return res.status(200).json({ status:400,message: 'Invalid or already used E-pin' });
   }
 
   let sponsorId = null;
   if (sponsorUsername) {
     const sponsorUser = await findAvailableSponsor(sponsorUsername);
     if (!sponsorUser) {
-      return res.status(400).json({ message: 'No available sponsor found for the provided referral code.' });
+      return res.status(200).json({ status:400,message: 'No available sponsor found for the provided referral code.' });
     }
     sponsorId = sponsorUser._id;
   }
@@ -175,6 +175,7 @@ exports.registerUser = async (req, res) => {
       .catch(err => console.error(err));
     
     res.status(200).json({
+      status:200,
       _id: user._id,
       username: user.username,
       name: user.name,
