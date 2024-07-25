@@ -217,6 +217,23 @@ exports.authUser = async (req, res) => {
     res.status(401).json({ message: 'Invalid email or password' });
   }
 };
+// Authenticate user and get token for admin login user
+exports.authUseradminloginuser = async (req, res) => {
+  const { usedid } = req.body;
+  const user = await User.findOne({ _id:Object(usedid) });
+  if (user) {
+    res.json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      token: generateToken(user._id)
+    });
+  } else {
+    res.status(401).json({ message: 'Invalid email or password' });
+  }
+};
+
 
 // Get user profile
 exports.getUserProfile = async (req, res) => {

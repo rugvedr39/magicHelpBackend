@@ -37,8 +37,8 @@ exports.generateEpin = async (req, res) => {
 
     const epin = {
       ePinId,
-      type,
-      amount,
+      type:"login",
+      amount:100,
       assignedTo: sponsorId,
       status: 'unused',
     };
