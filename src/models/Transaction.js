@@ -59,49 +59,49 @@ transactionSchema.statics.getTopReceivers = async function (page = 1, limit = 10
 
 
 
-transactionSchema.statics.createPMFTransactionsIfNeeded = async function(receiverId, incomeThreshold = 10000) {
-  const Transaction = this; // 'this' refers to the Transaction model
-  try {
-    // Calculate total income for the receiverId
-    const totalIncome = await Transaction.aggregate([
-      { $match: { receiverId: new mongoose.Types.ObjectId(receiverId), status: 'paid' } },
-      { $group: { _id: '$receiverId', totalAmount: { $sum: '$amount' } } }
-    ]);
+// transactionSchema.statics.createPMFTransactionsIfNeeded = async function(receiverId, incomeThreshold = 10000) {
+//   const Transaction = this; // 'this' refers to the Transaction model
+//   try {
+//     // Calculate total income for the receiverId
+//     const totalIncome = await Transaction.aggregate([
+//       { $match: { receiverId: new mongoose.Types.ObjectId(receiverId), status: 'paid' } },
+//       { $group: { _id: '$receiverId', totalAmount: { $sum: '$amount' } } }
+//     ]);
 
-    if (totalIncome.length > 0) {
-      const { totalAmount } = totalIncome[0];
-      const pmfTransactionsToCreate = Math.floor(totalAmount / incomeThreshold);
+//     if (totalIncome.length > 0) {
+//       const { totalAmount } = totalIncome[0];
+//       const pmfTransactionsToCreate = Math.floor(totalAmount / incomeThreshold);
 
-      // Check if PMF transactions need to be created
-      const existingPMFTransactions = await Transaction.find({
-        payerId: Object(receiverId), // Set appropriately if needed
-        type: 'PMF',
-        status: 'open' // Assuming 'open' is the initial status for PMF transactions
-      });
+//       // Check if PMF transactions need to be created
+//       const existingPMFTransactions = await Transaction.find({
+//         payerId: Object(receiverId), // Set appropriately if needed
+//         type: 'PMF',
+//         status: 'open' // Assuming 'open' is the initial status for PMF transactions
+//       });
 
-      if (existingPMFTransactions.length < pmfTransactionsToCreate) {
-        // Create PMF transactions up to pmfTransactionsToCreate
-        for (let i = existingPMFTransactions.length; i < pmfTransactionsToCreate; i++) {
-          const pmfTransaction = new Transaction({
-            payerId: Object(receiverId),// Set appropriately if needed
-            receiverId: null,
-            amount: 500, // Adjust amount as per your PMF fee requirement
-            type: 'PMF',
-            level: 0, // Set appropriately if needed
-            status: 'open', // Set initially as open
-            date: new Date()
-            // You can add additional fields like utrNumber or modify as per your schema
-          });
+//       if (existingPMFTransactions.length < pmfTransactionsToCreate) {
+//         // Create PMF transactions up to pmfTransactionsToCreate
+//         for (let i = existingPMFTransactions.length; i < pmfTransactionsToCreate; i++) {
+//           const pmfTransaction = new Transaction({
+//             payerId: Object(receiverId),// Set appropriately if needed
+//             receiverId: null,
+//             amount: 500, // Adjust amount as per your PMF fee requirement
+//             type: 'PMF',
+//             level: 0, // Set appropriately if needed
+//             status: 'open', // Set initially as open
+//             date: new Date()
+//             // You can add additional fields like utrNumber or modify as per your schema
+//           });
 
-          await pmfTransaction.save();
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error creating PMF transactions:', error);
-    // Handle error appropriately, e.g., log it or throw an exception
-  }
-};
+//           await pmfTransaction.save();
+//         }
+//       }
+//     }
+//   } catch (error) {
+//     console.error('Error creating PMF transactions:', error);
+//     // Handle error appropriately, e.g., log it or throw an exception
+//   }
+// };
   
 
 const Transaction = mongoose.model('Transaction', transactionSchema);

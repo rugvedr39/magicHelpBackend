@@ -294,3 +294,50 @@ exports.payPMF = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+
+exports.gettotals = async  (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const objectId = new mongoose.Types.ObjectId(userId);
+
+    const [totalHelpGiven, totalHelpGivenPending, totalHelpReceivedPending, totalHelpReceived, totalDirectIncome] = await Promise.all([
+      // Total help given (paid)
+      Transaction.aggregate([
+        { $match: { payerId: objectId, status: 'paid' } },
+        { $group: { _id: null, totalAmount: { $sum: '$amount' } } }
+      ]),
+      // Total help given (pending and open)
+      Transaction.aggregate([
+        { $match: { payerId: objectId, status: { $in: ['open', 'pending'] } } },
+        { $group: { _id: null, totalAmount: { $sum: '$amount' } } }
+      ]),
+      // Total help received (pending and open)
+      Transaction.aggregate([
+        { $match: { receiverId: objectId, status: { $in: ['open', 'pending'] } } },
+        { $group: { _id: null, totalAmount: { $sum: '$amount' } } }
+      ]),
+      // Total help received (paid)
+      Transaction.aggregate([
+        { $match: { receiverId: objectId, status: 'paid' } },
+        { $group: { _id: null, totalAmount: { $sum: '$amount' } } }
+      ]),
+      // Total direct income (level 1 and paid)
+      Transaction.aggregate([
+        { $match: { receiverId: objectId, status: 'paid', level: 1 } },
+        { $group: { _id: null, totalAmount: { $sum: '$amount' } } }
+      ])
+    ]);
+
+    res.json({
+      totalHelpGiven: totalHelpGiven[0]?.totalAmount || 0,
+      totalHelpGivenPending: totalHelpGivenPending[0]?.totalAmount || 0,
+      totalHelpReceivedPending: totalHelpReceivedPending[0]?.totalAmount || 0,
+      totalHelpReceived: totalHelpReceived[0]?.totalAmount || 0,
+      totalDirectIncome: totalDirectIncome[0]?.totalAmount || 0,
+    });
+  } catch (error) {
+    console.error('Error fetching totals:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};

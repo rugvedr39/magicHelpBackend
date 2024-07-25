@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getTransactionsWithReceiverInfo,updateTransactionUtrAndDate,
-    getTransactionsWithSenderInfo,getMatrixSummary,updateTransactionDone,getPaymentToPiadOrNot,getTransactionsPMF,payPMF } = require('../controllers/paymentController');
+    getTransactionsWithSenderInfo,getMatrixSummary,updateTransactionDone,getPaymentToPiadOrNot,getTransactionsPMF,payPMF,gettotals } = require('../controllers/paymentController');
 const { protect } = require('../middleware/authMiddleware');
 //for getting to pay details
 router.get('/transactions/payer/:payerId',protect, getTransactionsWithReceiverInfo);
@@ -19,6 +19,9 @@ router.get('/getTransactionsPMF/:payerId', getTransactionsPMF);
 
 // getMatrixSummary
 router.get('/getMatrixSummary/:userId', getMatrixSummary);
+
+//get totals summary for dashboard users
+router.get('/getTotalsSummary/:userId',protect,gettotals)
 
 
 
