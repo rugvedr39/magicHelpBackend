@@ -241,16 +241,12 @@ exports.getUserProfile = async (req, res) => {
 
 // Update user profile
 exports.updateUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
-
+  const user = await User.findById(req.body._id);
   if (user) {
-    user.username = req.body.username || user.username;
     user.email = req.body.email || user.email;
     user.mobileNumber = req.body.mobileNumber || user.mobileNumber;
-    user.bankDetails = req.body.bankDetails || user.bankDetails;
     user.upiNumber = req.body.upiNumber || user.upiNumber;
-    user.referralCode = req.body.referralCode || user.referralCode;
-    user.sponsorId = req.body.sponsorId || user.sponsorId;
+    user.name = req.body.name || user.name;
 
     if (req.body.password) {
       user.password = req.body.password;
@@ -259,6 +255,7 @@ exports.updateUserProfile = async (req, res) => {
     const updatedUser = await user.save();
 
     res.json({
+      status:200,
       _id: updatedUser._id,
       username: updatedUser.username,
       email: updatedUser.email,
@@ -320,6 +317,7 @@ exports.veryfyOtpAndChangePassword = async (req, res) => {
       res.status(200).json({ status:400,message: "Invalid User" });
     }
     user.password = password
+    user.save()
     await Otp.deleteOne({ otp: otpnumber });
     res.status(200).json({ status:200,message: "Password Changed Successfully" });
   } catch (error) {

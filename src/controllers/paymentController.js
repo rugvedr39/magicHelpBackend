@@ -11,7 +11,7 @@ exports.getTransactionsWithReceiverInfo = async (req, res) => {
     const transactions = await Transaction.find({ payerId: Object(payerId),type:'commission'})
       .populate({
         path: 'receiverId',
-        select: 'username email mobileNumber bankDetails upiNumber'
+        select: 'username email mobileNumber bankDetails upiNumber name'
       })
       .exec();
     if (!transactions || transactions.length === 0) {
@@ -26,6 +26,7 @@ exports.getTransactionsWithReceiverInfo = async (req, res) => {
       date: transaction.date,
       receiverInfo: {
         username: transaction.receiverId.username,
+        name: transaction.receiverId.name,
         email: transaction.receiverId.email,
         mobileNumber: transaction.receiverId.mobileNumber,
         bankDetails: transaction.receiverId.bankDetails,
@@ -202,18 +203,29 @@ exports.updateTransactionDone = async (req, res) => {
 
 exports.getPaymentToPiadOrNot = async (req, res) => {
   try{
-    const {username,amount}=req.body
+    const {username,amount,level,payerusername}=req.body
     const user = await User.findOne({username: username})
     const transaction = await Transaction.findOne({payerId:Object(user._id),amount:amount,status: 'paid',type:'commission'});
     if (transaction==null) {
-      res.status(200).json({ message: 'User Has Not Upgraded The Level Please Contact User' });
+      const options = {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          authorization: 'Bearer sNZxqze0Bb2JxCuujKyd8qRzTWKmIgrESdebgvn554fd9318'
+        },
+        body: JSON.stringify({chatId: "91"+user.mobileNumber+'@c.us', 
+          message: `*Important Update from MagicHelp* 🚨\n\nDear ${user.name}(${user.username}),\n\nWe want to inform you that *${payerusername}* want's to initiated a payment of *${amount}* for your level *${level}*. However, it appears that your account level has not been upgraded yet.\n\nTo process this payment, please ensure your level is updated. If you need assistance or have any questions, don't hesitate to reach out to our support team.\n\nThank you for your prompt attention to this matter.\n\nBest Regards,\n*MagicHelp Team*`
+
+        })
+      };
+      fetch('https://waapi.app/api/v1/instances/15895/client/action/send-message', options)
+        .then(response => response.json())
+        .then(response => response.json())
+        .catch(err => console.error(err));
+      res.status(200).json({ message: 'User Has Not Upgraded The Level Please Contact User and Form Our end we Send an Whatsapp message ' });
     }else{
-      const transactionPMF = await Transaction.findOne({payerId:Object(user._id),status: 'unpaid',type:'PMF'});
-      if (transactionPMF!=null){
-        res.status(200).json({ message: 'User Has Not Paid The PMF Please Contact User' });
-      }else{
-        res.status(200).json({ status:201 });
-      }
+      res.status(200).json({ status:201 });
     }
   } catch (error) {
     console.error('Error getting payment', error);

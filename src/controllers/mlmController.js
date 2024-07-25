@@ -75,9 +75,16 @@ exports.getTeamByLevel = async (req, res) => {
     const teamMembersAtLevel = await MlmStructure.find({ level,uplineId:Object(userId) })
       .skip((page - 1) * limit) // Skip records
       .limit(limit) // Limit records per page
-      .populate('userId', 'username email mobileNumber') // Populate user details
+      .populate({
+        path: 'userId',
+        select: 'username email mobileNumber sponsorId',
+        populate: {
+          path: 'sponsorId',
+          select: 'name username'
+        }
+      });
 
-    const totalMembersAtLevel = await MlmStructure.countDocuments({ level });
+    const totalMembersAtLevel = await MlmStructure.countDocuments({ level,uplineId:Object(userId) });
 
     const totalPages = Math.ceil(totalMembersAtLevel / limit); // Calculate total pages
 
