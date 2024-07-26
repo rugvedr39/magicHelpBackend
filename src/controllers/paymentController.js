@@ -9,6 +9,7 @@ exports.getTransactionsWithReceiverInfo = async (req, res) => {
     const { payerId } = req.params;
     // Fetch transactions where payerId matches
     const transactions = await Transaction.find({ payerId: Object(payerId),type:'commission'})
+    .sort({ level: 1 })
       .populate({
         path: 'receiverId',
         select: 'username email mobileNumber bankDetails upiNumber name'
