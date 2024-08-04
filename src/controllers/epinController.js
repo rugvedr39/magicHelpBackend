@@ -1,3 +1,4 @@
+const { default: mongoose } = require('mongoose');
 const Epin = require('../models/Epin');
 const User = require('../models/User');
 
@@ -53,16 +54,149 @@ exports.generateEpin = async (req, res) => {
 
 // Get all E-pins
 exports.getEpins = async (req, res) => {
-  const {UserId} = req.params
-  const epins = await Epin.find({
-    $or: [
-      { assignedTo: UserId },
-      { 'transferHistory.transferredFrom': UserId }
-    ]
-  }).populate('assignedTo transferHistory.transferredFrom transferHistory.transferredTo');
+  const { UserId } = req.params;
+  const { page = 1, limit = 10, type="used" } = req.query;
+  if (type != "transfer") {
+    try {
+      const epins = await Epin.find({
+          assignedTo: UserId ,
+          status: type
+      })
+      .populate({
+        path: 'assignedTo usedBy',
+        select: 'username' // Populate only the username field
+      })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+      const total = await Epin.countDocuments({
+          assignedTo: UserId ,
+          status: type
+      });
+      res.status(200).json({
+        epins,
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+      });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }else{
 
-  res.status(200).json(epins);
+    try {
+      // Count matching documents first
+      const totalCount = await Epin.aggregate([
+        {
+          $match: {
+            transferHistory: { $elemMatch: { transferredFrom: new mongoose.Types.ObjectId(UserId) } }
+          }
+        },
+        {
+          $addFields: {
+            transferHistory: {
+              $filter: {
+                input: "$transferHistory",
+                as: "history",
+                cond: {
+                  $or: [
+                    { $eq: ["$$history.transferredFrom", new mongoose.Types.ObjectId(UserId)] },
+                    { $eq: ["$$history.transferredTo", new mongoose.Types.ObjectId(UserId)] }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          $count: "totalCount"
+        }
+      ]);
+  
+      const total = totalCount.length > 0 ? totalCount[0].totalCount : 0;
+  
+      // Retrieve paginated results
+      const epins = await Epin.aggregate([
+        {
+          $match: {
+            transferHistory: { $elemMatch: { transferredFrom: new mongoose.Types.ObjectId(UserId) } }
+          }
+        },
+        {
+          $addFields: {
+            transferHistory: {
+              $filter: {
+                input: "$transferHistory",
+                as: "history",
+                cond: {
+                  $or: [
+                    { $eq: ["$$history.transferredFrom", new mongoose.Types.ObjectId(UserId)] },
+                    { $eq: ["$$history.transferredTo", new mongoose.Types.ObjectId(UserId)] }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'transferHistory.transferredTo',
+            foreignField: '_id',
+            as: 'transferHistory.transferredTo',
+            pipeline: [
+              { $project: { username: 1 } } // Only include the username field
+            ]
+          }
+        },
+        {
+          $unwind: { path: "$transferHistory", preserveNullAndEmptyArrays: true }
+        },
+        {
+          $project: {
+            ePinId: 1,
+            "transferHistory.transferredTo.username": 1
+          }
+        },
+        {
+          $facet: {
+            data: [
+              {
+                $skip: (page - 1) * limit
+              },
+              {
+                $limit: parseInt(limit)
+              }
+            ],
+            metadata: [
+              {
+                $count: "totalCount"
+              }
+            ]
+          }
+        },
+        {
+          $project: {
+            metadata: { $arrayElemAt: ["$metadata", 0] },
+            data: 1
+          }
+        }
+      ]);
+  
+      // Compute totalPages and ensure correct value
+      const totalPages = total ? Math.ceil(total / parseInt(limit)) : 0;
+  
+      res.status(200).json({
+        epins: epins[0].data,
+        totalPages: totalPages,
+        currentPage: parseInt(page)
+      });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
 };
+
+
+
 
 // Use E-pin
 exports.useEpin = async (req, res) => {
@@ -89,14 +223,14 @@ exports.transferEPINsByCount = async (req, res) => {
     const assignedToUser = await User.findOne({ username: assignedToUsername });
 
     if (!assignedToUser) {
-      return res.status(404).json({ message: 'Assigned to user not found.' });
+      return res.status(200).json({ message: 'Assigned to user not found.' });
     }
 
     // Fetch the EPINs to be transferred
     const epins = await Epin.find({ status: 'unused', assignedTo: transferredFromId }).limit(count);
 
     if (epins.length !== count) {
-      return res.status(400).json({ message: 'Insufficient unused EPINs available for transfer.' });
+      return res.status(200).json({ status:400, message: 'Insufficient unused EPINs available for transfer.' });
     }
 
     const epinIds = epins.map(epin => epin._id);
@@ -116,7 +250,7 @@ exports.transferEPINsByCount = async (req, res) => {
       }
     );
 
-    res.status(200).json({ message: 'EPINs transferred successfully.', updatedEpins });
+    res.status(200).json({status:200, message: 'EPINs transferred successfully.', updatedEpins });
   } catch (error) {
     console.error('Error transferring EPINs:', error);
     res.status(500).json({ message: 'Failed to transfer EPINs. Please try again.' });
