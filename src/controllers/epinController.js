@@ -55,11 +55,13 @@ exports.generateEpin = async (req, res) => {
 // Get all E-pins
 exports.getEpins = async (req, res) => {
   const { UserId } = req.params;
-  const { page = 1, limit = 10, type="used" } = req.query;
+  const { page = 1, limit = 10, type = "used" } = req.query;
+
   if (type != "transfer") {
     try {
+      // Get EPINs with pagination
       const epins = await Epin.find({
-          assignedTo: UserId ,
+          assignedTo: UserId,
           status: type
       })
       .populate({
@@ -68,20 +70,23 @@ exports.getEpins = async (req, res) => {
       })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
+
+      // Get total count of EPINs matching the criteria
       const total = await Epin.countDocuments({
-          assignedTo: UserId ,
+          assignedTo: UserId,
           status: type
       });
+
       res.status(200).json({
         epins,
+        total,
         totalPages: Math.ceil(total / limit),
         currentPage: parseInt(page),
       });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
-  }else{
-
+  } else {
     try {
       // Count matching documents first
       const totalCount = await Epin.aggregate([
@@ -110,9 +115,9 @@ exports.getEpins = async (req, res) => {
           $count: "totalCount"
         }
       ]);
-  
+
       const total = totalCount.length > 0 ? totalCount[0].totalCount : 0;
-  
+
       // Retrieve paginated results
       const epins = await Epin.aggregate([
         {
@@ -180,12 +185,12 @@ exports.getEpins = async (req, res) => {
           }
         }
       ]);
-  
-      // Compute totalPages and ensure correct value
+
       const totalPages = total ? Math.ceil(total / parseInt(limit)) : 0;
-  
+
       res.status(200).json({
         epins: epins[0].data,
+        total,
         totalPages: totalPages,
         currentPage: parseInt(page)
       });
